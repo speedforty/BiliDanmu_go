@@ -30,18 +30,25 @@ func NewDanmu() *DanMuMsg {
 }
 
 type Gift struct {
+	UID      uint32 `json:"uid"`
 	UUname   string `json:"u_uname"`
 	Action   string `json:"action"`
+	Face     string `json:"face"`
 	Price    uint32 `json:"price"`
+	Num      uint32 `json:"num"`
 	GiftName string `json:"gift_name"`
+	CoinType string `json:"coin_type"`
 }
 
 func NewGift() *Gift {
 	return &Gift{
 		UUname:   "",
 		Action:   "",
+		Face  :   "",
 		Price:    0,
+		Num  :    0,
 		GiftName: "",
+		CoinType: "",
 	}
 }
 
@@ -97,51 +104,54 @@ func (c *Client) SendPackage(packetlen uint32, magic uint16, ver uint16, typeID 
 	return
 }
 
-func (c *Client) ReceiveMsg() {
+func (c *Client) ReceiveMsg() *Pool {
 	pool := NewPool()
-	go pool.Handle()
-	for {
-		_, msg, err := c.conn.ReadMessage()
-		if err != nil {
-			log.Println("ReadMsg err :", err)
-			continue
-		}
-
-		switch msg[11] {
-		case 8:
-			fmt.Println("握手包收发完毕，连接成功")
-			c.Connected = true
-		case 3:
-			onlineNow := ByteArrToDecimal(msg[16:])
-			if uint32(onlineNow) != c.Room.Online {
-				c.Room.Online = uint32(onlineNow)
-				fmt.Println("当前房间人气变动：", uint32(onlineNow))
+	//go pool.Handle()
+	go func(c *Client, pool *Pool){
+		for {
+			_, msg, err := c.conn.ReadMessage()
+			if err != nil {
+				log.Println("ReadMsg err :", err)
+				continue
 			}
-		case 5:
-			if inflated, err := ZlibInflate(msg[16:]); err != nil {
-				// 代表是未压缩数据
-				pool.MsgUncompressed <- string(msg[16:])
-			} else {
-				for len(inflated) > 0 {
-					l := ByteArrToDecimal(inflated[:4])
-					c := json.Get(inflated[16:l], "cmd").ToString()
-					switch CMD(c) {
-					case CMDDanmuMsg:
-						pool.UserMsg <- string(inflated[16:l])
-					case CMDSendGift:
-						pool.UserGift <- string(inflated[16:l])
-					case CMDWELCOME:
-						pool.UserGift <- string(inflated[16:l])
-					case CMDWelcomeGuard:
-						pool.UserGuard <- string(inflated[16:l])
-					case CMDEntry:
-						pool.UserEntry <- string(inflated[16:l])
+
+			switch msg[11] {
+			case 8:
+				fmt.Println("握手包收发完毕，连接成功")
+				c.Connected = true
+			case 3:
+				onlineNow := ByteArrToDecimal(msg[16:])
+				if uint32(onlineNow) != c.Room.Online {
+					c.Room.Online = uint32(onlineNow)
+					//fmt.Println("当前房间人气变动：", uint32(onlineNow))
+				}
+			case 5:
+				if inflated, err := ZlibInflate(msg[16:]); err != nil {
+					// 代表是未压缩数据
+					pool.MsgUncompressed <- string(msg[16:])
+				} else {
+					for len(inflated) > 0 {
+						l := ByteArrToDecimal(inflated[:4])
+						c := json.Get(inflated[16:l], "cmd").ToString()
+						switch CMD(c) {
+						case CMDDanmuMsg:
+							pool.UserMsg <- string(inflated[16:l])
+						case CMDSendGift:
+							pool.UserGift <- string(inflated[16:l])
+						case CMDWELCOME:
+							pool.UserGift <- string(inflated[16:l])
+						case CMDWelcomeGuard:
+							pool.UserGuard <- string(inflated[16:l])
+						case CMDEntry:
+							pool.UserEntry <- string(inflated[16:l])
+						}
+						inflated = inflated[l:]
 					}
-					inflated = inflated[l:]
 				}
 			}
 		}
-	}
+	}(c, pool)
+	return pool
 }
 
 func (c *Client) HeartBeat() {

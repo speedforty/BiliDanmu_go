@@ -108,11 +108,15 @@ func (d *DanMuMsg) GetDanmuMsg(source []byte) {
 }
 
 func (g *Gift) GetGiftMsg(source []byte) {
+	g.UID    = json.Get(source, "data", "uid").ToUint32()
 	g.UUname = json.Get(source, "data", "uname").ToString()
 	g.Action = json.Get(source, "data", "action").ToString()
+	g.Face   = json.Get(source, "data", "face").ToString()
 	nums := json.Get(source, "data", "num").ToUint32()
 	g.Price = json.Get(source, "data", "price").ToUint32() * nums
+	g.Num   = nums
 	g.GiftName = json.Get(source, "data", "giftName").ToString()
+	g.CoinType = json.Get(source, "data", "coin_type").ToString()
 }
 
 // 返回字节数组表示数的十进制形式
