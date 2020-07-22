@@ -139,7 +139,7 @@ func (c *Client) ReceiveMsg() *Pool {
 						case CMDSendGift:
 							pool.UserGift <- string(inflated[16:l])
 						case CMDWELCOME:
-							pool.UserGift <- string(inflated[16:l])
+							pool.UserEnter <- string(inflated[16:l])
 						case CMDWelcomeGuard:
 							pool.UserGuard <- string(inflated[16:l])
 						case CMDEntry:
