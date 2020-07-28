@@ -70,7 +70,7 @@ func NewClient(roomid uint32) (c *Client, err error) {
 	}, nil
 }
 
-func (c *Client) Start() (*Pool,  error) {
+func (c *Client) Start() (pool *Pool, err error) {
 	u := url.URL{Scheme: "wss", Host: DanMuServer, Path: "/sub",}
 
 	conn, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
@@ -94,7 +94,8 @@ func (c *Client) Start() (*Pool,  error) {
 		fmt.Println("SendPackage err,", err)
 		return nil, err
 	}
-	pool := c.ReceiveMsg()
 	go c.HeartBeat()
+	pool = NewPool()
+	go c.ReceiveMsg(pool)
 	return pool, nil
 }
